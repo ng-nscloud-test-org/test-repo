@@ -1,0 +1,50 @@
+name: Test artifacts
+on:
+  workflow_dispatch:
+
+permissions:
+  packages: read
+  contents: read
+  id-token: write # This is required for requesting the JWT
+
+env:
+    NAMESPACE_ACTIONS_RESULTS_URL: https://testing-fra1.compute.namespaceapis.com
+
+jobs:
+  artifact-upload-tests:
+    name: Artifact Upload Tests
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    steps:
+      - run: |
+          mkdir ./archive
+          echo "test" > ./archive/test.txt
+          echo "another" > ./archive/another.txt
+      - name: Upload archive
+        id: upload-archive
+        uses: namespace-actions/upload-artifact@v0
+        with:
+          name: canary-test-archive
+          path: ./archive
+          retention-days: 1
+          compression-level: 6
+      - name: Print artifact ID
+        run: echo 'Artifact ID is ${{ steps.upload-archive.outputs.artifact-id }}'
+      - name: Print artifact URL
+        run: echo 'Artifact ID is ${{ steps.upload-archive.outputs.artifact-url }}'
+
+  artifact-download-tests:
+    name: Artifact Download Tests
+    needs: artifact-upload-tests
+    runs-on: nscloud-ubuntu-22.04-amd64-2x8
+    steps:
+      - run: |
+          mkdir -p /tmp/destination
+      - name: Download nsc
+        uses: namespace-actions/download-artifact@v0
+        with:
+          name: canary-test-archive
+          path: /tmp/destination
+      - run: |
+          ls /tmp/destination
+          cat /tmp/destination/test.txt
+          cat /tmp/destination/another.txt
